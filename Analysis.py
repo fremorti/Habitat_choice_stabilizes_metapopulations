@@ -103,19 +103,17 @@ PARAMETERS
 '''
 
 
-MAXTIME=50                     #generation time, default:50
-dim = 8                        #grid size (dim X dim gridcells), default:32
+MAXTIME=500                     #number of generations, default:500
+dim = 32                        #grid size (dim X dim gridcells), default:32
 R_res = 0.25                    #optimal growth resources, default:0.25
 K_res = 1                       #carrying capacity resources, default:1
 maxd = 2                        #maximum dispersal length, default:2
-func = LH_dispersal            #fixed trait
-#departure =int(sys.argv[4])     #departure decision, int(sys.argv[5])
-#settlement =int(sys.argv[3])    #settlement desicion, int(sys.argv[4]) 
-cost = float(0) #float(sys.argv[1])       #cost of directed dispersal, float(sys.argv[1])
-rep = 1 #int(sys.argv[3])                  #replicate, sys.argv[3]
+func = LH_dispersal             #fixed trait
+cost = float(sys.argv[1])       #cost of directed dispersal, float(sys.argv[1])
+rep = int(sys.argv[3])          #replicate, sys.argv[3]
 
 for departure in [0, 1]:
     for settlement in [0, 1]:
-        trait = (1 if func == LH_varT else 5 if departure else 1)*float(0.25) #float(sys.argv[2])
+        trait = (1 if func == LH_varT else 5 if departure else 1)*float(sys.argv[2])
         func(trait)
 print(str(time.clock()))
