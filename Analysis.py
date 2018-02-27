@@ -4,7 +4,7 @@ Created on 13 dec. 2016
 @author: fremorti
 '''
 
-from AdaptNGB import Metapopulation as Metapopulation
+from Adapt1 import Metapopulation as Metapopulation
 import numpy as np
 import os
 import sys
@@ -32,7 +32,7 @@ def runall(initialthreshold, initialvarT, mutable_threshold, mutable_variability
     #create an array where we calculate 10 metrics of this simulation
     data = np.zeros(10)
     diversity = [ind.muT for ind in meta.population]
-    thresholds = [ind.threshold for ind in meta.population]
+    thresholds = [ind.d for ind in meta.population]
     nichebr = [ind.varT for ind in meta.population]
     habitatmatch = [abs(ind.muT-meta.environment[ind.x][ind.y]) for ind in meta.population]
     
@@ -103,19 +103,19 @@ PARAMETERS
 '''
 
 
-MAXTIME=500                     #generation time, default:50
-dim = 32                        #grid size (dim X dim gridcells), default:32
+MAXTIME=50                     #generation time, default:50
+dim = 8                        #grid size (dim X dim gridcells), default:32
 R_res = 0.25                    #optimal growth resources, default:0.25
 K_res = 1                       #carrying capacity resources, default:1
 maxd = 2                        #maximum dispersal length, default:2
 func = LH_dispersal            #fixed trait
 #departure =int(sys.argv[4])     #departure decision, int(sys.argv[5])
 #settlement =int(sys.argv[3])    #settlement desicion, int(sys.argv[4]) 
-cost = float(sys.argv[1])       #cost of directed dispersal, float(sys.argv[1])  
-rep  = int(sys.argv[3])                  #replicate, sys.argv[3]
+cost = float(0) #float(sys.argv[1])       #cost of directed dispersal, float(sys.argv[1])
+rep = 1 #int(sys.argv[3])                  #replicate, sys.argv[3]
 
 for departure in [0, 1]:
     for settlement in [0, 1]:
-        trait = (1 if func == LH_varT else 5 if departure else 1)*float(sys.argv[2]) 
+        trait = (1 if func == LH_varT else 5 if departure else 1)*float(0.25) #float(sys.argv[2])
         func(trait)
 print(str(time.clock()))

@@ -80,8 +80,8 @@ class Individual:
         
         #dispersal mutates only if it is mutable (md)
         if rnd.random()<rate and md :
-            self.threshold=abs(np.random.normal(self.threshold,0.1))
-            self.threshold = 2-self.threshold if self.threshold > 1 else self.threshold
+            self.d=abs(np.random.normal(self.d,0.1))
+            self.d = 2-self.d if self.d > 1 else self.d
             
         if rnd.random()<rate:
             self.muT=np.random.normal(self.muT,0.1)
