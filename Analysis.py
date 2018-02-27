@@ -4,7 +4,7 @@ Created on 13 dec. 2016
 @author: fremorti
 '''
 
-from Adapt1 import Metapopulation as Metapopulation
+from Adapt import Metapopulation as Metapopulation
 import numpy as np
 import os
 import sys
