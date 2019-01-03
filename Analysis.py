@@ -30,7 +30,7 @@ def runall(initialthreshold, initialvarT, mutable_threshold, mutable_variability
     meta = run(MAXTIME, dim,R_res,K_res, maxd, initialvarT, initialthreshold, mutable_threshold, mutable_variability, departure, settlement, cost)
     
     #create an array where we calculate 10 metrics of this simulation
-    data = np.zeros(10)
+    data = np.zeros(11)
     diversity = [ind.muT for ind in meta.population]
     thresholds = [ind.d for ind in meta.population]
     nichebr = [ind.varT for ind in meta.population]
@@ -52,14 +52,14 @@ def runall(initialthreshold, initialvarT, mutable_threshold, mutable_variability
     data[6] = meta.pros_prop
 
     
-    #temporal standard deviation of local population sizes during the last 5 generations at each location
-    localstddev = [[pow(np.var([size[x,y] for size in meta.localsizes[-5:]]), 0.5) for y in range(dim)] for x in range(dim)]
-    #temporal mean local population sizes during the last 5 generations at each location
-    localmean = [[np.mean([size[x,y] for size in meta.localsizes[-5:]]) for y in range(dim)] for x in range(dim)]
-    #temporal variance of total metapopulation size during the last 5 generations
-    globalvar = np.var([np.sum(size) for size in meta.localsizes[-5:]])
-    #temporal mean of total metapopulation size during the last 5 generations
-    globalmean = np.mean([np.sum(size) for size in meta.localsizes[-5:]])
+    #temporal standard deviation of local population sizes during the last half of generations at each location
+    localstddev = [[pow(np.var([size[x,y] for size in meta.localsizes[int(MAXTIME*0.5):]]), 0.5) for y in range(dim)] for x in range(dim)]
+    #temporal mean local population sizes during the last half of generations at each location
+    localmean = [[np.mean([size[x,y] for size in meta.localsizes[int(MAXTIME*0.5):]]) for y in range(dim)] for x in range(dim)]
+    #temporal variance of total metapopulation size during the last half of generations
+    globalvar = np.var([np.sum(size) for size in meta.localsizes[int(MAXTIME*0.5):]])
+    #temporal mean of total metapopulation size during the last half of generations
+    globalmean = np.mean([np.sum(size) for size in meta.localsizes[int(MAXTIME*0.5):]])
     
     #local population variability (alpha variability)
     data[7] = pow(np.sum(localstddev)/np.sum(localmean), 2)
@@ -67,6 +67,9 @@ def runall(initialthreshold, initialvarT, mutable_threshold, mutable_variability
     data[8] = globalvar/pow(globalmean, 2)
     #metapopulation synchrony (beta variability)
     data[9] = pow(np.sum(localstddev), 2)/globalvar
+
+    #leftover resources
+    data[10] = np.sum(meta.resources)
     
     #save metrics
     if not os.path.exists('{}/data/{}/departure{}/settlement{}/{}/{}'.format(default_path, mode, str(departure), str(settlement), str(cost), str(trait))):
@@ -92,6 +95,7 @@ def run(MAXTIME, dim,R_res,K_res, maxd, initialvarT, initialthreshold, mutable_d
     #simulate MAXTIME generations (print generation time and metapopulation size for quickly checking during runs)
     for timer in range(MAXTIME): 
         meta.lifecycle()
+
     print('generation ',timer)
     print("popsize: {}\n".format(len(meta.population)))
     return(meta)
@@ -109,11 +113,13 @@ R_res = 0.25                    #optimal growth resources, default:0.25
 K_res = 1                       #carrying capacity resources, default:1
 maxd = 2                        #maximum dispersal length, default:2
 func = LH_dispersal             #fixed trait
+#departure =int(sys.argv[4])     #departure decision, int(sys.argv[5])
+#settlement =int(sys.argv[3])    #settlement desicion, int(sys.argv[4]) 
 cost = float(sys.argv[1])       #cost of directed dispersal, float(sys.argv[1])
-rep = int(sys.argv[3])          #replicate, sys.argv[3]
+rep = int(sys.argv[3])                  #replicate, sys.argv[3]
 
 for departure in [0, 1]:
     for settlement in [0, 1]:
-        trait = (1 if func == LH_varT else 5 if departure else 1)*float(sys.argv[2])
+        trait = (0.5 if func == LH_varT else 1)*float(sys.argv[2])
         func(trait)
 print(str(time.clock()))
