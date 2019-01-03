@@ -32,24 +32,24 @@ class Individual:
         self.h=0.2                  #handling time, default: 0.2
         self.settlement = settlement                    #absence or presence of settlement choice
         self.sigma=300 - settlement*cost_of_disp        #conversion factor, default: 300
-        
-        
+        self.moved = 0                                  #bolean indicating whether the individual moved or not
+
     def move(self, max_x, max_y,  env):
         '''an individual moves within the boundaries of the landscape
         where settlement is or is not dependent on the environment env
         toroidal landscape
         '''
-        
-        #all possible new x coordinates (g) and all possible y coordinates (h) to disperse to    
+
+        #all possible new x coordinates (g) and all possible y coordinates (h) to disperse to
         g = [x%len(env) for x in range(self.x-self.maxd, self.x+self.maxd+1)]
         h = [y%len(env[0]) for y in range(self.y-self.maxd, self.y+self.maxd+1)]
         rnd.shuffle(g)
         rnd.shuffle(h)
-        
+
         if self.settlement:
             #with settlement decision
             diff = 1
-            #loop through every combination of xs and ys   
+            #loop through every combination of xs and ys
             for x in g:
                 for y in h:
                     diff_ = abs(self.muT - env[x][y])
@@ -63,7 +63,7 @@ class Individual:
                         x_ = x
                         y_ = y
             self.x, self.y = x_, y_
-        
+
         else:
             #without settlement decision
             while self.x == g[0] and self.y == h[0]:
@@ -73,37 +73,40 @@ class Individual:
                 rnd.shuffle(g)
                 rnd.shuffle(h)
             self.x, self.y = g[0], h[0]
-        
+        self.moved = 1
+
 
     def mutation(self,rate, md, mv):
         #an individual mutates according to a probability (rate)
-        
+
         #dispersal mutates only if it is mutable (md)
         if rnd.random()<rate and md :
             self.d=abs(np.random.normal(self.d,0.1))
             self.d = 2-self.d if self.d > 1 else self.d
-            
+
         if rnd.random()<rate:
             self.muT=np.random.normal(self.muT,0.1)
         if rnd.random()<rate and mv :
             self.varT=abs(np.random.normal(self.varT,0.1))
-            self.varT = 2-self.varT if self.varT > 1 else self.varT
-        
-                                                                                                       
+
+
     def resource_use(self,localhabitat,R):
         #calculates the expected resources an individual will use in a certain location, derived from chaianunporn and hoverstadt 2012
-        Gamma=math.exp(-self.ct*self.varT)    #factor due to trade off function 
+        Gamma=math.exp(-self.ct*self.varT)    #factor due to trade off function
         Alpha_ij=self.amax*Gamma*math.exp(-(math.pow((self.muT-localhabitat),2)/math.pow((self.varT),2)))  #habitat match and niche width determine how performant the individual is in this environment
         Ri=(Alpha_ij*R/(1+(self.h+self.h*Alpha_ij*R)))  #resource use is determined by how performant the individual is and how many resources there are locally, a
-        
+
         return Ri
-        
-                  
-    def fitness(self,localhabitat,R):        
+
+
+    def fitness(self,localhabitat,R, cod):
         #draw a random number of offspring with an average proportionate with the resources used
-        return np.random.poisson(self.sigma*self.resource_use(localhabitat, R))
-        
-   
+        fit = np.random.poisson(self.sigma*self.resource_use(localhabitat, R)*(1-self.moved*cod))
+        self.moved = 0
+        return fit
+
+
+
 class Metapopulation:
     '''Contains the whole population, regulates daily affairs'''
     def __init__(self,
@@ -116,10 +119,10 @@ class Metapopulation:
                  fixedd,
                  mutable_dispersal,
                  mutable_varT,
-                 departure, 
+                 departure,
                  settlement,
                  cod):
-        '''Initialization'''           
+        '''Initialization'''
         self.max_x = max_x                                      #number of grid cells along the first dimension of the landscape
         self.max_y = max_y                                      #number of grid cells along the second dimension of the landscape
         self.res_R = res_R                                      #Optimal growth rate of the resources
@@ -137,64 +140,65 @@ class Metapopulation:
         self.localsizes = []                                    #list of population sizes at each location for each generation
         self.cod = cod                                          #cost of settlement choice
         self.initialize_pop()
-        
+
     def initialize_pop(self):
         '''Initialize individuals'''
         startpop = 70000  #initial metapopulation size
-        
+
         for _ in range(startpop):
             x, y, muT = rnd.randint(0,(self.max_x-1)), rnd.randint(0,(self.max_y-1)), rnd.random()
             self.population.append(Individual(x,
                                               y,
                                               muT,
-                                              (self.fixedvarT if self.fixedvarT else 0.5*rnd.random()) , 
+                                              (self.fixedvarT if self.fixedvarT else 0.5*rnd.random()) ,
                                               self.initialmaxd,
-                                              (self.fixedd if self.fixedd else (5 if self.departure else 1)*rnd.random()),
+                                              (self.fixedd if self.fixedd else rnd.random()),
                                               self.settlement,
                                               self.cod))
 
-                                             
-    def lifecycle(self):   
+
+    def lifecycle(self):
         '''all actions during one generation for the metapopulation'''
-        
+
         #resources grow
         self.resources += self.res_R*(1-self.resources/self.res_K)
 
         #replace generation with new one
         oldpop = self.population[:]
         del self.population[:]
-        
+
         #randomize the order in which individuals will perfom their actions
         rnd.shuffle(oldpop)
-        
+
         movenumber, prospectnumber = 0, 0
         oldpopsize = len(oldpop)        #old metapopulation size
         newlocalsizes= np.zeros((self.max_x,self.max_y))
-        
+
         for ind in oldpop:
-            
+
             #mutate
-            ind.mutation(0.01, self.md, self.mv)
-                     
+            ind.mutation(0.01, self.md, self.mv) #default 0.01
+
             #move
             #calculate how much resources the individual needs to reproduce
             necessary_resources=ind.resource_use(self.environment[ind.x,ind.y],self.resources[ind.x, ind.y])
             #decide to move: according to available resources when there is a departure decision, random when there is not
-            if (ind.sigma*necessary_resources if self.departure else rnd.random()) < ind.d:
-                x_, y_ = ind.x, ind.y 
+            if (0.2*ind.sigma*necessary_resources if (self.departure and rnd.random()<1.01) else rnd.random()) < ind.d: #the random term with the departure choice allows for imperfect habitat choice
+                x_, y_ = ind.x, ind.y
                 ind.move(self.max_x, self.max_y, self.environment)
                 prospectnumber += 1
                 if not(ind.x == x_ and ind.y == y_):
                     movenumber += 1
-                
+
+
             #reproduce
             necessary_resources=ind.resource_use(self.environment[ind.x,ind.y],self.resources[ind.x, ind.y])
             #if there are enough resources present locally...
             if necessary_resources<self.resources[ind.x,ind.y]:
                 #...deplete resources
-                self.resources[ind.x,ind.y]-=necessary_resources   
+                self.resources[ind.x,ind.y]-=necessary_resources
                 #reproduce according to the fitness value
-                Fitness=ind.fitness(self.environment[ind.x,ind.y],self.resources[ind.x, ind.y])
+                Fitness=ind.fitness(self.environment[ind.x,ind.y],self.resources[ind.x, ind.y], self.cod)
                 newlocalsizes[ind.x, ind.y] += Fitness
                 for _ in range(Fitness):
                     #add a new individual with the same traits as its parent to the new population
@@ -206,17 +210,17 @@ class Metapopulation:
                                                       ind.d,
                                                       self.settlement,
                                                       self.cod))
-    
+
             else:
                 #deplete resources, but no reproduction (fitness dependent on environmnet only, not resources)
                 self.resources[ind.x, ind.y] = 0
-        
+
         #resp. the dispersaland prospecting propensity
         self.disp_prop = movenumber/oldpopsize
         self.pros_prop = prospectnumber/oldpopsize
         #calculate local population sizes of this generation
         self.localsizes.append(newlocalsizes)
-         
+
     def loadlandscape(self):
         'Initialize envionmental values in the landscape'
         for x in range(self.max_x):
